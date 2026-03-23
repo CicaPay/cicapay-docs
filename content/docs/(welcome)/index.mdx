@@ -1,0 +1,141 @@
+---
+title: Welcome
+description: Everything you need to collect and send crypto payments.
+icon: DoorOpen
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { CreditCard, LayoutTemplate, ArrowUpRight, Webhook, Coins } from 'lucide-react';
+
+# Welcome to the CicaPay API Documentation
+
+The infrastructure that enables you to **accept and send cryptocurrency payments with ease**.
+
+At CicaPay, we build powerful tools that help `businesses`, `institutions`, `developers`, and `individuals` across **Africa** integrate crypto payments into their products and services. Our API abstracts the complexity of multiple blockchains, multi-currency transactions, and evolving crypto technologies, allowing you to focus on what matters most: building and scaling your product.
+
+---
+
+## With CicaPay, you can:
+
+<Cards>
+  <Card
+    icon={<CreditCard />}
+    title="Payment Request"
+    href="/docs/payment-request"
+  >
+    Handle the entire payment flow directly in your application without redirection.
+
+    You keep full control of the user interface and checkout experience, while the CicaPay API manages blockchain interactions and payment processing in the background.
+  </Card>
+  <Card
+    icon={<LayoutTemplate />}
+    title="Invoice"
+    href="/docs/invoice"
+  >
+    Use CicaPay’s hosted payment page to start accepting crypto payments quickly.
+
+    The hosted interface provides a professional checkout experience with wallet connection, payment instructions, and real-time payment status, without requiring any frontend development.
+  </Card>
+  <Card
+    icon={<ArrowUpRight />}
+    title="Payout"
+    href="/docs/payout"
+  >
+    Send crypto from your wallet to any external blockchain address.
+
+    Payouts are ideal for **withdrawals**, **disbursements**, and **automated transfers**, allowing you to programmatically move funds when needed.
+  </Card>
+</Cards>
+
+---
+
+## Authentication
+
+All API requests are authenticated using a short-lived **access token** obtained from your API keys. Here is how to get set up:
+
+<Steps>
+
+<Step>
+
+### Create and Verify Your Account
+
+Sign up at [dashboard.cicapay.com](https://dashboard.cicapay.com) and complete the account verification process before you can generate API keys.
+
+</Step>
+
+<Step>
+
+### Generate Your API Keys
+
+Once verified, open your Dashboard and navigate to **Settings → API Keys**, then click **Create API Key**.
+
+![API Keys section in the CicaPay Dashboard](/assets/dash.jpg)
+
+You will receive two keys:
+
+| Key | Description |
+|---|---|
+| **Public Key** | Identifies your account. Safe to reference in server-side code. |
+| **Secret Key** | Used to request access tokens. Treat it like a password. |
+
+<Callout type="error" title="We Cannot Recover Your Secret Key">
+Your secret key is never stored as plain text on our side. **If you lose it, it is gone** — you will need to revoke the key and generate a new one. Store it in a secrets manager or environment variable immediately after creation.
+</Callout>
+
+<Callout type="warn" title="Revoke Immediately If Compromised">
+If you have any doubt about the security of a key — rotate it right away from **Dashboard → API Keys → Revoke**. Do not wait.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Get an Access Token
+
+Use your public key and secret key to obtain a short-lived access token from our authentication endpoint:
+
+[**`POST /auth/token` — Authentication endpoint →**](/docs/api-reference/Authentication/createAccessToken)
+
+```http
+POST /auth/token
+Content-Type: application/json
+
+{
+  "public_key": "pk_live_...",
+  "secret_key": "sk_live_..."
+}
+```
+
+The response returns a bearer token:
+
+```json
+{
+  "access_token": "eyJhbGciOi...",
+  "expires_in": 3600
+}
+```
+
+</Step>
+
+<Step>
+
+### Authenticate Your Requests
+
+Include the access token in the `Authorization` header of every API call:
+
+```http
+Authorization: Bearer eyJhbGciOi...
+```
+
+That's it — you are now authenticated and can use all available endpoints.
+
+</Step>
+
+</Steps>
+
+<Callout type="warn" title="Payout Service — IP Whitelisting Required">
+To use the **Payout** service, your server IP address must be whitelisted by our team. This involves an additional security review. [Contact us](/docs/support) to initiate the process before going live with payouts.
+</Callout>
+

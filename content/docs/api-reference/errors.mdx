@@ -1,0 +1,196 @@
+---
+title: Errors
+description: Understand CicaPay API error objects, types, and HTTP status codes.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Overview
+
+When a request fails, the CicaPay API returns a consistent JSON error object so your integration can handle failures predictably, regardless of the error type. All errors follow the same envelope structure.
+
+### Error Object
+
+```json
+{
+  "error": {
+    "type": "authentication_error",
+    "code": "unauthorized",
+    "decline_code": null,
+    "message": "Invalid or missing API credentials.",
+    "param": null,
+    "documentation_url": "https://xxx.com/docs/errors/"
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `type` | `string` | Broad error category. See [Error Types](#error-types) below. |
+| `code` | `string` | A machine-readable code specific to the error. |
+| `decline_code` | `string \| null` | Additional sub-code for declined operations (e.g. payment or payout declines). `null` when not applicable. |
+| `message` | `string` | A human-readable description of what went wrong. |
+| `param` | `string \| null` | The request parameter that caused the error, if applicable. `null` otherwise. |
+| `documentation_url` | `string` | A direct link to the relevant documentation for this error. |
+
+---
+
+## Error Types
+
+### Authentication Error
+
+Returned when the request cannot be authenticated — missing credentials, an invalid token, or an expired session.
+
+```typescript
+error: {
+  type: "authentication_error",
+  code: "unauthorized",
+  decline_code: null,
+  message: "Your access token is invalid or has expired.",
+  param: null,
+  documentation_url: "https://xxx.com/docs/errors/",
+}
+```
+
+**Common causes:** expired access token, wrong public/secret key, missing `Authorization` header.
+
+---
+
+### Idempotency Error
+
+Returned when an idempotency key is reused with a different request payload than the original.
+
+```typescript
+error: {
+  type: "invalid_request_error",
+  code: "idempotency_error",
+  decline_code: "idempotency_key_reuse",
+  message: "A request with this idempotency key was already made with different parameters.",
+  param: null,
+  documentation_url: "https://xxx.com/docs/errors/",
+}
+```
+
+**Common causes:** reusing an idempotency key with a different request body, sending duplicate requests with mismatched parameters.
+
+---
+
+### Invoice Error
+
+Returned when an invoice operation fails — creation, retrieval, or state transition issues specific to the invoice flow.
+
+```typescript
+error: {
+  type: "invoice_error",
+  code: "invoice_expired",
+  decline_code: null,
+  message: "This invoice has expired and can no longer accept payments.",
+  param: null,
+  documentation_url: "https://xxx.com/docs/errors/",
+}
+```
+
+**Common causes:** interacting with an expired invoice, invalid `accepted_cryptos` configuration, unsupported currency or network combination.
+
+---
+
+### Payment Error
+
+Returned when a payment request operation fails — creation errors, state conflicts, or issues with payment parameters.
+
+```typescript
+error: {
+  type: "payment_error",
+  code: "payment_already_paid",
+  decline_code: null,
+  message: "This payment request has already been fulfilled.",
+  param: null,
+  documentation_url: "https://xxx.com/docs/errors/",
+}
+```
+
+**Common causes:** duplicate payment request, unsupported currency/network pair, invalid amount.
+
+---
+
+### Payout Error
+
+Returned when a payout cannot be initiated or processed — insufficient balance, unwhitelisted IP, or invalid destination.
+
+```typescript
+error: {
+  type: "payout_error",
+  code: "insufficient_balance",
+  decline_code: "balance_too_low",
+  message: "Your wallet balance is insufficient to cover the payout amount and fees.",
+  param: "amount",
+  documentation_url: "https://xxx.com/docs/errors/",
+}
+```
+
+**Common causes:** balance below `amount + fee`, IP not whitelisted, invalid or unsupported address format.
+
+<Callout type="warn" title="Payout IP Whitelisting">
+If your server IP is not whitelisted, payout requests will return a `payout_error` with a `403 Forbidden` HTTP status. See the [Payout page](/docs/payout) for setup instructions.
+</Callout>
+
+---
+
+### Validation Error
+
+Returned when the request body fails schema or business rule validation — missing required fields, wrong types, or values out of range.
+
+```typescript
+error: {
+  type: "validation_error",
+  code: "missing_required_field",
+  decline_code: null,
+  message: "The 'amount' field is required.",
+  param: "amount",
+  documentation_url: "https://xxx.com/docs/errors/",
+}
+```
+
+**Common causes:** missing required fields, invalid enum value (e.g. unsupported currency), `amount` out of allowed range. Check the `param` field to identify exactly which field failed validation.
+
+---
+
+### Server Error
+
+Returned when an unexpected error occurs on our side. These are rare — our infrastructure is designed for high availability.
+
+```typescript
+error: {
+  type: "server_error",
+  code: "internal_error",
+  decline_code: null,
+  message: "An unexpected error occurred. Please try again or contact support.",
+  param: null,
+  documentation_url: "https://xxx.com/docs/errors/",
+}
+```
+
+<Callout type="warn" title="On Server Errors">
+`500` and `503` errors are rare. If you encounter them persistently, check our status page or contact support. Implement exponential backoff before retrying.
+</Callout>
+
+---
+
+## HTTP Status Code Summary
+
+| Code | Status | Meaning |
+|---|---|---|
+| `200` | **OK** | The request succeeded. |
+| `201` | **Created** | A resource was successfully created (e.g. new payment request, invoice, or payout). |
+| `400` | **Bad Request** | The request is malformed or failed validation. Check the `param` field for details. |
+| `401` | **Unauthorized** | Authentication failed. Your token is missing, invalid, or expired. |
+| `403` | **Forbidden** | You are authenticated but not permitted to perform this action (e.g. payout from a non-whitelisted IP). |
+| `404` | **Not Found** | The requested resource does not exist. |
+| `429` | **Too Many Requests** | You have exceeded the rate limit. Back off and retry after a delay. |
+| `500` | **Internal Server Error** | An unexpected error occurred on our side. Rare — retry with backoff. |
+| `503` | **Service Unavailable** | The service is temporarily unavailable. Retry after a short delay. |
+
+<Callout title="Handling 5xx Errors">
+Always implement retry logic with exponential backoff for `500` and `503` responses. Do not retry immediately — wait at least a few seconds before the first retry, and increase the delay on subsequent attempts.
+</Callout>

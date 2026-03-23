@@ -1,0 +1,17 @@
+{
+  "title": "Introduction",
+  "icon": "Rocket",
+  "root": true,
+  "pages": [
+    "---OVERVIEW---",
+    "index",
+    "accept-payment",
+    "payment-request",
+    "invoice",
+    "payout",
+    "supported-currencies",
+    "faucet",
+    "fees",
+    "refunds"
+  ]
+}

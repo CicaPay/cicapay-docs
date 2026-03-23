@@ -1,0 +1,156 @@
+---
+title: Invoice
+description: Use CicaPay’s hosted payment page to start accepting crypto payments quickly.
+icon: Form
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+## Overview
+
+  The hosted interface provides a professional checkout experience with wallet connection, payment instructions, and real-time payment status, without requiring any frontend development.
+
+Compared to a [Payment Request](/docs/payment-request), the Invoice is the faster integration path and offers your customers significantly more choice and flexibility.
+
+### What Your Customer Gets
+
+- Professional, mobile-ready payment UI
+- **WalletConnect** — supports hundreds of wallets on desktop and mobile
+- **MetaMask** — direct in-browser connection
+- **QR Code** — for manual wallet transfers
+- Multiple crypto and network options (configurable by you)
+- A refund request form if needed
+- And more...
+
+---
+
+## Step 1 — Create an Invoice
+
+Send a `POST` request to the following endpoint:
+
+[**`POST /invoice/new` — API Reference →**](/docs/api-reference/Invoices/createInvoice)
+
+### Request Body
+
+```json
+{
+  "price": 120,
+  "currency": "USD",
+  "title": "Pro Subscription",
+  "description": "Monthly subscription payment",
+  "success_url": "https://merchant.com/success",
+  "failed_url": "https://merchant.com/failed",
+  "accepted_cryptos": [
+    {
+      "token": "USDT",
+      "networks": ["ethereum", "bnb_smart_chain"]
+    },
+    {
+      "token": "BTC",
+      "networks": ["bitcoin"]
+    }
+  ],
+  "callback_data": {
+    "order_id": "ORD-9821"
+  }
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `price` | `number` | ✅ | The amount your customer must pay, expressed in `currency`. |
+| `currency` | `string` | ✅ | The fiat currency used for pricing. We use this for exchange rate conversion. [Supported currencies →](/docs/supported-currencies) |
+| `title` | `string` | ✅ | The name of the product or service being purchased. Displayed on the payment page. |
+| `description` | `string` | ✅ | A short description shown on the invoice page. |
+| `success_url` | `string` | ✅ | The URL we direct your customer to after a successful payment. |
+| `failed_url` | `string` | ✅ | The URL we direct your customer to after a timeout, cancellation, or failed payment. |
+| `accepted_cryptos` | `array` | ❌ | A list of tokens and networks to restrict the payment options shown to your customer. If omitted, all available assets and networks are displayed. [Supported currencies →](/docs/supported-currencies) |
+| `callback_data` | `object` | ❌ | Arbitrary data returned as-is in webhook notifications. See note below. |
+
+#### `accepted_cryptos` Object
+
+| Field | Type | Description |
+|---|---|---|
+| `token` | `string` | The crypto asset symbol (e.g. `USDT`, `BTC`). |
+| `networks` | `string[]` | One or more network identifiers to enable for this token (e.g. `["bnb_smart_chain", "ethereum"]`). |
+
+<Callout title="About accepted_cryptos">
+If you leave `accepted_cryptos` empty or omit it entirely, your customer will see all assets and networks currently supported by CicaPay. Use this field to narrow the options when your integration only handles specific assets.
+</Callout>
+
+<Callout title="About callback_data">
+`callback_data` is returned exactly as provided — we do not validate, transform, or guarantee its integrity. Do not use it for security-sensitive logic. Treat it as a convenience passthrough only.
+</Callout>
+
+---
+
+## Step 2 — Redirect Your Customer
+
+If the request is successful, you will receive a response containing a hosted invoice URL:
+
+```json
+{
+  "invoice_id": "inv_c72e4a1b09",
+  "url": "https://pay.cicapay.com/invoice/inv_c72e4a1b09",
+  "expires_in": 1800
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `invoice_id` | `string` | Unique identifier for this invoice. Store it to track status later. |
+| `url` | `string` | The hosted payment page URL. Redirect your customer here. |
+| `expires_in` | `integer` | Seconds remaining after which the invoice expires and no payment will be accepted. |
+
+Redirect your customer to the `url` immediately after creation. The page handles everything from that point — wallet connection, payment, confirmation, and redirection back to your `success_url` or `failed_url`.
+
+<Callout type="warn" title="Invoice Expiry">
+The invoice has a limited validity window defined by `expires_in`. Do not store the URL for later use — always create a fresh invoice at checkout time.
+</Callout>
+
+---
+
+## Step 3 — Track the Payment
+
+Once a payment is completed or its status changes, we notify your server automatically.
+
+### Webhooks (Recommended)
+
+<Cards>
+  <Card title="Configure Webhooks" href="/docs/webhooks">
+    Set up your webhook endpoint and subscribe to payment events.
+  </Card>
+</Cards>
+
+Relevant events for invoices:
+
+| Event | Description |
+|---|---|
+| `invoice.paid` | The invoice has been fully paid and no outstanding balance remains. |
+| `invoice.state.expired` | The invoice window has elapsed without receiving a valid payment or a paid status.. |
+| `invoice.state.canceled` | The invoice was canceled before completion and will not be processed. |
+
+### Poll the API
+
+You can also fetch the current status and details of an invoice at any time:
+
+[**`GET /invoice/{invoice_id}` — API Reference →**](/docs/api-reference/Invoices/getInvoice)
+
+---
+
+## Payment Request vs Invoice
+
+Not sure which to use? Here is a quick comparison:
+
+| | Payment Request | Invoice |
+|---|---|---|
+| **Frontend work** | You build the UI | None — hosted by CicaPay |
+| **Wallet options** | Manual address display | WalletConnect, MetaMask, QR Code |
+| **Crypto selection** | You control | Customer selects (filtered by you) |
+| **Redirection** | None | Customer redirected to hosted page |
+| **Refund form** | Not included | Built-in |
+| **Best for** | Full custom experiences | Fast integration, richer UX |

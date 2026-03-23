@@ -1,0 +1,15 @@
+{
+  "title": "API Reference",
+  "icon": "Book",
+  "root": true,
+  "pages": [
+    "index",
+    "Authentication",
+    "Payment-Requests",
+    "Invoices",
+    "Payouts",
+    "webhook",
+    "errors",
+    "decline-code"
+  ]
+}

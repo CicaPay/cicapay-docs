@@ -1,0 +1,11 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/black.css';
+@import 'fumadocs-ui/css/preset.css';
+@import 'fumadocs-openapi/css/preset.css';
+
+@layer theme {
+    :root,
+    :host {
+        --color-fd-primary: #bd83ff !important;
+    }
+}

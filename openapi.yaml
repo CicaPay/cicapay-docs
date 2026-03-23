@@ -1,0 +1,1127 @@
+openapi: 3.1.0
+info:
+  title: CicaPay API
+  version: 1.0.0
+  description: Public API for cryptocurrency payments and payouts
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:8080/api/v1
+    description: API v1
+security:
+  - BearerAuth: []
+tags: []
+paths:
+  /oauth/token:
+    post:
+      tags:
+        - Authentication
+      summary: Generate token
+      security: []
+      description: Authenticate using your public_key and secret_key to obtain an access token.
+      operationId: createAccessToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApikeyAuthSchemaInput'
+      responses:
+        '200':
+          description: Token successfully generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApikeyAuthSchemaResponse'
+        '400':
+          description: Validation error in request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid API keys / Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /oauth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh token
+      security: []
+      description: Generate a new access token using a valid refresh token.
+      operationId: refreshAccessToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApikeyRefreshSchemaInput'
+      responses:
+        '200':
+          description: New access token generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApikeyRefreshSchemaResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /invoice/new:
+    post:
+      tags:
+        - Invoices
+      summary: Create a new invoice
+      description: Create a hosted invoice that allows a customer to pay using one of the accepted cryptocurrencies.
+      operationId: createInvoice
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            maxLength: 255
+          description: |
+            Unique key used to ensure idempotent requests.
+
+            - If the same key is reused with the same request, the server returns the original response.
+            - If the same key is reused with a different request payload, an error is returned.
+            - Keys are scoped per user and endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInvoiceRequest'
+      responses:
+        '201':
+          description: Invoice successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateInvoiceResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /invoice/{id}:
+    get:
+      tags:
+        - Invoices
+      summary: Retrieve an invoice
+      description: Get full details of an invoice, including transactions and refund status.
+      operationId: getInvoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Public identifier of the invoice
+          schema:
+            type: string
+            example: pay_a84f1c2e93
+      responses:
+        '200':
+          description: Invoice retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetInvoiceResponse'
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /pay_out/new:
+    post:
+      tags:
+        - Payouts
+      summary: Create a new payout
+      description: Send cryptocurrency from your wallet to an external blockchain address.
+      operationId: createPayout
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            maxLength: 255
+          description: |
+            Unique key used to ensure idempotent requests.
+
+            - If the same key is reused with the same request, the server returns the original response.
+            - If the same key is reused with a different request payload, an error is returned.
+            - Keys are scoped per user and endpoint. 
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePayoutRequest'
+      responses:
+        '201':
+          description: Payout successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePayoutResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Business logic error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /pay_out/{id}:
+    get:
+      tags:
+        - Payouts
+      summary: Retrieve an payout
+      description: Get full details of an payout, including transactions.
+      operationId: getPayout
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Public identifier of the payout
+          schema:
+            type: string
+            example: pay_a84f1c2e93
+      responses:
+        '200':
+          description: Payout retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetPayoutResponse'
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payout not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /request_payment/new:
+    post:
+      tags:
+        - Payment Requests
+      summary: Create a new payment request
+      description: Create a new crypto payment request that a customer can use to complete a payment.
+      operationId: createPaymentRequest
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+            maxLength: 255
+          description: |
+            Unique key used to ensure idempotent requests.
+
+            - If the same key is reused with the same request, the server returns the original response.
+            - If the same key is reused with a different request payload, an error is returned.
+            - Keys are scoped per user and endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        '201':
+          description: Payment request successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatePaymentResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /request_payment/{id}:
+    get:
+      tags:
+        - Payment Requests
+      summary: Retrieve a payment request
+      description: Get full details of a payment request, including transactions and refund status.
+      operationId: getPaymentRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Public identifier of the payment request
+          schema:
+            type: string
+            example: pay_a84f1c2e93
+      responses:
+        '200':
+          description: Payment request retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetPaymentResponse'
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /request_payment/{id}/cancel:
+    post:
+      tags:
+        - Payment Requests
+      summary: Cancel a payment request
+      description: Cancel an existing payment request if it has not been completed yet.
+      operationId: cancelPaymentRequest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Public identifier of the payment request
+          schema:
+            type: string
+            example: pay_a84f1c2e93
+      responses:
+        '200':
+          description: Payment request successfully canceled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelPaymentResponse'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment request not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ApikeyAuthSchemaInput:
+      type: object
+      required:
+        - public_key
+        - secret_key
+      properties:
+        public_key:
+          type: string
+          example: pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          description: Public API key
+        secret_key:
+          type: string
+          example: sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          description: Secret API key
+    ApikeyAuthSchemaResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        refresh_token:
+          type: string
+          example: def502009a8c23...
+        token_type:
+          type: string
+          example: Bearer
+        token_expires_in:
+          type: integer
+          example: 900
+          description: Access token expiration time in seconds
+        refresh_token_expires_in:
+          type: integer
+          example: 2592000
+          description: Refresh token expiration time in seconds
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorObject'
+    ErrorObject:
+      type: object
+      properties:
+        type:
+          type: string
+          example: validation_error
+        code:
+          type: string
+          example: invalid_request
+        decline_code:
+          type: string
+          example: check error page for more details
+        message:
+          type: string
+          example: check error page for more details
+        param:
+          type: string
+          example: check error page for more details
+        documentation_url:
+          type: string
+          example: https://xxx.com/docs/errors/
+    ApikeyRefreshSchemaInput:
+      type: object
+      required:
+        - refresh_token
+      properties:
+        refresh_token:
+          type: string
+          description: Refresh token issued during authentication
+          default: def50200a1f23b5e9c4d...
+    ApikeyRefreshSchemaResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: Newly issued access token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        token_type:
+          type: string
+          example: Bearer
+        token_expires_in:
+          type: integer
+          description: Access token expiration time in seconds
+          default: 900
+    CreateInvoiceRequest:
+      type: object
+      required:
+        - price
+        - currency
+        - title
+        - description
+        - success_url
+        - failed_url
+      properties:
+        price:
+          type: number
+          description: Invoice amount
+          example: 120
+        currency:
+          type: string
+          description: Fiat currency used for pricing
+          example: USD
+        title:
+          type: string
+          description: Invoice title
+          example: Pro subscription
+          maxLength: 100
+        description:
+          type: string
+          description: Invoice description
+          example: Monthly subscription payment
+          maxLength: 250
+        success_url:
+          type: string
+          format: uri
+          description: Redirect URL after successful payment
+          example: https://merchant.com/payment-success
+        failed_url:
+          type: string
+          format: uri
+          description: Redirect URL if payment fails
+          example: https://merchant.com/payment-failed
+        callback_data:
+          type: object
+          description: Optional metadata returned in webhook callbacks
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+          example:
+            order_id: ORD-9821
+            customer_id: 827
+        accepted_cryptos:
+          type: array
+          description: List of accepted cryptocurrencies and networks
+          items:
+            type: object
+            required:
+              - token
+              - networks
+            properties:
+              token:
+                type: string
+                description: Cryptocurrency symbol
+                example: USDT
+              networks:
+                type: array
+                description: Supported networks for this token
+                items:
+                  type: string
+                example:
+                  - bnb_smart_chain
+                  - ethereum
+    CreateInvoiceResponse:
+      type: object
+      required:
+        - id
+        - url
+        - expires_in
+      properties:
+        id:
+          type: string
+          description: Public invoice identifier
+          example: inv_92ab41d
+        url:
+          type: string
+          format: uri
+          description: Hosted invoice payment page URL
+          example: https://pay.example.com/invoice/inv_92ab41d
+        expires_in:
+          type: integer
+          description: Time before invoice expires (seconds)
+          example: 1800
+    GetInvoiceResponse:
+      type: object
+      properties:
+        invoice_id:
+          type: string
+          example: '123456789'
+        status:
+          type: string
+          description: High-level payment status
+          example: pending
+        state:
+          type: string
+          description: Internal state of the payment
+          example: waiting_for_payment
+        price:
+          type: number
+          example: 100
+        currency:
+          type: string
+          example: USD
+        accepted_cryptos:
+          type: array
+          description: List of accepted cryptocurrencies and networks
+          items:
+            $ref: '#/components/schemas/InvoiceAcceptedCryptoCurrencies'
+        exchange_rate:
+          type: string
+          example: '1.0045'
+        fee:
+          type: string
+          description: Processing fee
+          example: '1.5'
+        sub_total:
+          type: string
+          description: Price before fees
+          example: '100'
+        net_amount:
+          type: string
+          description: Total amount expected from customer (sub_total + fee)
+          example: '101.5'
+        title:
+          type: string
+          example: Premium subscription
+        description:
+          type: string
+          example: Monthly premium plan
+        callback_data:
+          type: object
+          description: Metadata provided during creation
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+          example:
+            order_id: ORD-9281
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: string
+          format: date-time
+        transactions:
+          type: array
+          description: Blockchain transactions associated with the invoice
+          items:
+            $ref: '#/components/schemas/InvoiceTransaction'
+        refund:
+          $ref: '#/components/schemas/RefundObject'
+    InvoiceTransaction:
+      type: object
+      properties:
+        status:
+          type: string
+          example: Confirmed
+        amount:
+          type: string
+          description: Amount received in crypto
+          example: '1'
+        token:
+          type: string
+          example: BTT
+        network:
+          type: string
+          example: ethereum
+        hash:
+          type: string
+          description: Blockchain transaction hash
+          example: '0xbb5f53bfcb050c8cf3b121ab405de240b63d2d95f5a61e7ac0c0665c17e48a6a'
+        explorerLink:
+          type: string
+          format: uri
+          example: https://bscscan.com/tx/0xbb5f53bfcb050c8cf3b121ab405de240b63d2d95f5a61e7ac0c0665c17e48a6a
+    RefundObject:
+      type: object
+      properties:
+        refund_id:
+          type: string
+          example: c007339b-eeda-464f-bf45-e10b1762a38b
+        amount:
+          type: string
+          example: '1'
+        type:
+          type: string
+          description: Refund reason/type
+          example: NOTENOUGH
+        status:
+          type: string
+          example: PENDING
+        eligibility:
+          type: object
+          properties:
+            is_eligible:
+              type: boolean
+              example: true
+            minimum_amount_required:
+              type: string
+              example: '0.0050627230999997502896'
+            symbol:
+              type: string
+              example: BNB
+    InvoiceAcceptedCryptoCurrencies:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Cryptocurrency symbol
+          example: USDT
+        networks:
+          type: array
+          description: Supported networks for this token
+          items:
+            type: string
+          example:
+            - ethereum
+            - bnb_smart_chain
+    CreatePayoutRequest:
+      type: object
+      required:
+        - amount
+        - currency
+        - network
+        - address
+      properties:
+        amount:
+          type: number
+          description: Amount of cryptocurrency to send
+          example: 50
+        currency:
+          type: string
+          description: Cryptocurrency symbol
+          example: USDT
+        network:
+          type: string
+          description: Blockchain network
+          example: ethereum
+        address:
+          type: string
+          description: Destination blockchain wallet address
+          example: TQ9nF5mR7Pz1j3vV3p1Qn3v2T8g6cF9YhR
+        callback_data:
+          type: object
+          description: Optional metadata returned in webhook callbacks
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+          example:
+            payout_id: order_9281
+            merchant_user: 1872
+    CreatePayoutResponse:
+      type: object
+      required:
+        - payout_id
+        - address
+        - currency
+        - network
+        - amount
+        - fee
+        - net_amount
+      properties:
+        payout_id:
+          type: string
+          description: Public identifier of the payout
+          example: po_82f19aa2
+        address:
+          type: string
+          description: Destination wallet address
+          example: TQ9nF5mR7Pz1j3vV3p1Qn3v2T8g6cF9YhR
+        currency:
+          type: string
+          description: Cryptocurrency used
+          example: USDT
+        network:
+          type: string
+          description: Blockchain network
+          example: ethereum
+        amount:
+          type: string
+          description: Amount sent to the external wallet
+          example: '50'
+        fee:
+          type: string
+          description: Payout fee charged to the merchant
+          example: '0.5'
+        net_amount:
+          type: string
+          description: Total amount deducted from the merchant wallet (amount + fee)
+          example: '50.5'
+    GetPayoutResponse:
+      type: object
+      properties:
+        payout_id:
+          type: string
+          example: '123456789'
+        status:
+          type: string
+          description: High-level payment status
+          example: pending
+        currency:
+          type: string
+          example: USDT
+        amount:
+          type: string
+          example: '100'
+        fee:
+          type: string
+          description: Payout fee
+          example: '1.5'
+        net_amount:
+          type: string
+          description: Total amount debited from merchant wallet (amount + fee)
+          example: '101.5'
+        address:
+          type: string
+          description: Destination blockchain wallet address
+          example: TQ9nF5mR7Pz1j3vV3p1Qn3v2T8g6cF9YhR
+        network:
+          type: string
+          example: ethereum
+        tx_hash:
+          type: string
+          description: Blockchain transaction hash
+          example: '0xbb5f53bfcb050c8cf3b121ab405de240b63d2d95f5a61e7ac0c0665c17e48a6a'
+        callback_data:
+          type: object
+          description: Metadata provided during creation
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+          example:
+            order_id: ORD-9281
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreatePaymentRequest:
+      type: object
+      required:
+        - price
+        - currency1
+        - currency2
+        - network
+        - title
+        - description
+      properties:
+        price:
+          type: number
+          description: Amount to charge the customer
+          example: 100
+        currency1:
+          type: string
+          description: Fiat currency used for pricing
+          example: USD
+        currency2:
+          type: string
+          description: Cryptocurrency used for payment
+          example: USDT
+        network:
+          type: string
+          description: Blockchain network used for payment
+          example: ethereum
+        title:
+          type: string
+          description: Payment title
+          example: Premium subscription
+          maxLength: 100
+        description:
+          type: string
+          description: Payment description
+          example: Subscription payment for premium plan
+          maxLength: 250
+        success_url:
+          type: string
+          format: uri
+          description: Redirect URL after successful payment
+          example: https://merchant.com/payment-success
+        failed_url:
+          type: string
+          format: uri
+          description: Redirect URL if payment fails
+          example: https://merchant.com/payment-failed
+        callback_data:
+          type: object
+          description: Optional metadata returned in webhook callbacks
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+          example:
+            order_id: ORD-9281
+            customer_id: 1283
+            is_vip: true
+    CreatePaymentResponse:
+      type: object
+      required:
+        - address
+        - currency
+        - network
+        - amount
+        - remaining_time_to_pay
+        - payment_id
+        - exchange_rate
+      properties:
+        payment_id:
+          type: string
+          description: Unique identifier of the payment request
+          example: '123456789'
+        address:
+          type: string
+          description: Blockchain address where the customer must send the payment
+          example: TQ9nF5mR7Pz1j3vV3p1Qn3v2T8g6cF9YhR
+        currency:
+          type: string
+          description: Cryptocurrency used for the payment
+          example: USDT
+        network:
+          type: string
+          description: Blockchain network used for the payment
+          example: ethereum
+        amount:
+          type: string
+          description: Exact amount of cryptocurrency the customer must send
+          example: '99.54'
+        exchange_rate:
+          type: string
+          description: Conversion rate used to calculate the crypto amount
+          example: '1.0045'
+        remaining_time_to_pay:
+          type: integer
+          description: Time remaining to complete the payment (in seconds)
+          example: 1200
+    GetPaymentResponse:
+      type: object
+      properties:
+        payment_id:
+          type: string
+          example: '123456789'
+        status:
+          type: string
+          description: High-level payment status
+          example: pending
+        state:
+          type: string
+          description: Internal state of the payment
+          example: waiting_for_payment
+        price:
+          type: number
+          example: 100
+        currency1:
+          type: string
+          example: USD
+        currency2:
+          type: string
+          example: USDT
+        exchange_rate:
+          type: string
+          example: '1.0045'
+        fee:
+          type: string
+          description: Processing fee
+          example: '1.5'
+        sub_total:
+          type: string
+          description: Price before fees
+          example: '100'
+        net_amount:
+          type: string
+          description: Total amount expected from customer (sub_total + fee)
+          example: '101.5'
+        title:
+          type: string
+          example: Premium subscription
+        description:
+          type: string
+          example: Monthly premium plan
+        callback_data:
+          type: object
+          description: Metadata provided during creation
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+              - type: 'null'
+          example:
+            order_id: ORD-9281
+        created_at:
+          type: string
+          format: date-time
+        expire_at:
+          type: string
+          format: date-time
+        paid_at:
+          type: string
+          format: date-time
+        transactions:
+          type: array
+          description: Blockchain transactions associated with the payment
+          items:
+            $ref: '#/components/schemas/PaymentTransaction'
+        refund:
+          $ref: '#/components/schemas/RefundObject'
+    PaymentTransaction:
+      type: object
+      properties:
+        status:
+          type: string
+          example: Confirmed
+        amount:
+          type: string
+          description: Amount received in crypto
+          example: '1'
+        token:
+          type: string
+          example: BTT
+        network:
+          type: string
+          example: ethereum
+        hash:
+          type: string
+          description: Blockchain transaction hash
+          example: '0xbb5f53bfcb050c8cf3b121ab405de240b63d2d95f5a61e7ac0c0665c17e48a6a'
+        explorerLink:
+          type: string
+          format: uri
+          example: https://bscscan.com/tx/0xbb5f53bfcb050c8cf3b121ab405de240b63d2d95f5a61e7ac0c0665c17e48a6a
+    CancelPaymentResponse:
+      type: object
+      required:
+        - success
+        - payment_id
+      properties:
+        success:
+          type: boolean
+          description: Indicates if the cancellation was successful
+          example: true
+        payment_id:
+          type: string
+          description: Identifier of the canceled payment request
+          example: '123456789'
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

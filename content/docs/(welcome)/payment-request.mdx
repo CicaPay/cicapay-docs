@@ -1,0 +1,129 @@
+---
+title: Payment Request
+description: Handle the entire payment flow directly in your application without redirection.
+icon: HandCoins
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+## Overview
+
+  You keep full **control** of the user interface and checkout experience, while the CicaPay API manages blockchain interactions and payment processing in the background.
+
+---
+
+## Step 1 — Create a Payment Request
+
+Send a `POST` request to the following endpoint:
+
+[**`POST /request_payment/new` — API Reference →**](/docs/api-reference/Payment-Requests/createPaymentRequest)
+
+### Request Body
+
+```json
+{
+  "price": 5,
+  "currency1": "EUR",
+  "currency2": "BNB",
+  "network": "bnb_smart_chain",
+  "title": "Order #12345",
+  "description": "Short description of the product or service",
+  "callback_data": {
+    "user_id": "ededed",
+    "order_url": "https://yourstore.com/orders/12345"
+  }
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `price` | `number` | ✅ | The amount your customer must pay, expressed in `currency1`. |
+| `currency1` | `string` | ✅ | The fiat currency used for pricing. We use this for the exchange rate conversion. [Supported currencies →](/docs/supported-currencies) |
+| `currency2` | `string` | ✅ | The crypto currency the customer will send. [Supported currencies →](/docs/supported-currencies) |
+| `network` | `string` | ✅ | The blockchain network for `currency2`. Must match a network listed for that asset. [Supported networks →](/docs/supported-currencies) |
+| `title` | `string` | ✅ | A label for the product or service being paid for. |
+| `description` | `string` | ✅ | A short description of the product or service. |
+| `callback_data` | `object` | ❌ | Arbitrary data returned as-is in webhook notifications. See note below. |
+
+<Callout title="About callback_data">
+`callback_data` is returned exactly as provided — we do not validate, transform, or guarantee its integrity. Do not rely on it for security-sensitive logic. Treat it as a convenience passthrough only.
+</Callout>
+
+---
+
+## Step 2 — Handle the Response
+
+If the request is successful, you will receive a response like:
+
+```json
+{
+  "payment_id": "pay_a84f1c2e93",
+  "address": "TQ9nF5mR7Pz1j3vV3p1Qn3v2T8g6cF9YhR",
+  "currency": "BNB",
+  "network": "bnb_smart_chain",
+  "amount": 99.54,
+  "exchange_rate": 1.0045,
+  "remaining_time_to_pay": 1200
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `payment_id` | `string` | Unique identifier for this payment request. Store it to track status later. |
+| `address` | `string` | The wallet address your customer must send funds to. **See critical warning below.** |
+| `currency` | `string` | The crypto currency to be sent. |
+| `network` | `string` | The blockchain network to use when sending. **See critical warning below.** |
+| `amount` | `string` | The exact amount the customer must send. Sending less will not mark the request as paid. |
+| `exchange_rate` | `string` | The price of `currency2` in `currency1` at the time of creation. |
+| `remaining_time_to_pay` | `integer` | Seconds remaining to complete the payment. Payments received after this window are not considered valid. |
+
+<Callout type="error" title="Address & Network — No Recovery If Wrong">
+The `address` and `network` fields must be shown to your customer exactly as received. **Any error in the address means funds are lost forever.** Sending on the wrong network also results in permanent, unrecoverable loss of funds. Always display both fields clearly and prominently. Read the [Disclaimer & Responsibility page](/docs/disclaimer) before going live.
+</Callout>
+
+<Callout type="warn" title="Send the Exact Amount">
+The customer must send the **exact** `amount` returned. Sending less will not mark the payment as paid. For information on underpayment handling, see the [Refunds page](/docs/refunds).
+</Callout>
+
+<Callout type="warn" title="Payment Window">
+The `remaining_time_to_pay` is a hard deadline. We do not process payments received after this window expires. Make sure you display a countdown to your customer so they can act in time.
+</Callout>
+
+---
+
+## Step 3 — Track the Payment
+
+Once a payment request is created, you have two ways to track its status:
+
+### Webhooks (Recommended)
+
+We automatically send a webhook notification every time the status of a payment request changes. Configure your webhook listener and subscribe to the relevant events to be notified in real time.
+
+<Cards>
+  <Card title="Configure Webhooks" href="/docs/api-reference/webhook">
+    Set up your webhook endpoint and subscribe to payment events.
+  </Card>
+</Cards>
+
+Relevant events for payment requests:
+
+| Event | Description |
+|---|---|
+| `payment.paid` | The exact amount was received within the payment window. |
+| `payment.notenough` | A payment was received but the amount was insufficient. |
+| `payment.overpaid` | A payment was received but exceeded the expected amount. |
+| `payment.processing` | A payment has been founded and is currently being processed. |
+| `payment.state.expired` | The payment window has elapsed without receiving a valid payment or a paid status. |
+| `payment.state.canceled` | The payment was canceled before completion and will not be processed. |
+
+### Poll the API
+
+You can also query the status and details of a payment request at any time using:
+
+[**`GET /request_payment/{payment_id}` — API Reference →**](/docs/api-reference/Payment-Requests/getPaymentRequest)

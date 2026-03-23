@@ -1,0 +1,614 @@
+---
+title: Webhooks
+description: Learn how to subscribe, verify, and handle real-time webhook notifications from our platform.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Shield, Zap, RefreshCw, AlertTriangle } from 'lucide-react';
+
+## Overview
+
+Webhooks let our platform notify your server in real time whenever an event occurs — a payment received, a payout completed, or a transaction confirmed. Instead of polling our API, you register a URL and we `POST` a signed JSON payload to it automatically.
+
+<Cards>
+  <Card icon={<Zap />} title="Real-time">
+    Events are delivered within seconds of occurrence.
+  </Card>
+  <Card icon={<Shield />} title="Secure">
+    Every payload is HMAC-SHA256 signed. You verify every request.
+  </Card>
+  <Card icon={<RefreshCw />} title="Reliable">
+    Failed deliveries are retried automatically up to 5 times.
+  </Card>
+</Cards>
+
+---
+
+## Step 1 — Subscribe to a Webhook
+
+<Steps>
+
+<Step>
+
+### Open the Webhook Section
+
+Log in to your **Dashboard**, then navigate to **Settings → Webhooks**.
+
+![Dashboard Webhooks section — navigate to Settings then Webhooks](/assets/dash.jpg)
+
+</Step>
+
+<Step>
+
+### Add a New Webhook
+
+Click **Add Webhook**. A configuration panel will appear.
+
+![Add Webhook button in the Webhooks section](/assets/dash.jpg)
+
+Fill in the following fields:
+
+| Field | Description |
+|---|---|
+| **Listener URL** | The HTTPS endpoint on your server that will receive `POST` requests. |
+| **Secret Key** | A strong, random string you generate. Used to verify signatures. **We never store this as plain text — you are solely responsible for keeping it safe.** |
+| **Events** | Select one or more events to subscribe to (see list below). |
+
+<Callout type="warn" title="Keep Your Secret Key Safe">
+Your secret key is stored as a one-way hash on our side. **If you lose it, you must rotate it** — there is no way to retrieve it. Store it in your environment variables or a secrets manager, never in source code.
+</Callout>
+
+</Step>
+
+<Step>
+
+### Choose Events
+
+Select all events relevant to your integration:
+
+| Event | Description |
+|---|---|
+| `payment.paid` | A payment was received in full. |
+| `payment.notenough` | A payment was received but the amount was insufficient. |
+| `payment.overpaid` | A payment was received but exceeded the expected amount. |
+| `payment.processing` | A payment is being processed. |
+| `payment.state.expired` | A payment request has expired without being completed. |
+| `payment.state.canceled` | A payment was canceled before completion. |
+| `invoice.paid` | An invoice has been paid in full. |
+| `invoice.state.expired` | An invoice has expired without being paid. |
+| `invoice.state.canceled` | An invoice was canceled before payment. |
+| `payout.processing` | A payout has been queued and is being processed. |
+| `payout.completed` | A payout was successfully delivered. |
+| `payout.failed` | A payout could not be completed. |
+| `refund.paid` | A refund payment has been sent. |
+| `refund.collected` | A refund has been claimed or collected by the merchant. |
+
+</Step>
+
+<Step>
+
+### Save and Test
+
+Click **Save**. Your webhook is now active.
+
+To verify the setup, click the **Test** button next to your new webhook. Our server will immediately send a test payload to your listener URL:
+
+```json
+{
+  "event": "webhook.test",
+  "timestamp": 1773529966,
+  "data": {
+    "message": "This is a test webhook",
+    "environment": "sandbox"
+  }
+}
+```
+
+If your endpoint returns a `2xx` status code, the test is successful. ✅
+
+</Step>
+
+</Steps>
+
+---
+
+## Step 2 — Understand the Request Format
+
+Every webhook request we send is a standard `HTTP POST` with the following headers:
+
+```http
+Content-Type: application/json
+X-Signature: <hmac-sha256-hex>
+X-Event: <event-name>
+```
+
+| Header | Description |
+|---|---|
+| `Content-Type` | Always `application/json`. |
+| `X-Signature` | HMAC-SHA256 hex digest of the full JSON body, signed with your secret key. |
+| `X-Event` | The name of the event (e.g. `payment.paid`). |
+
+### Payload Structure
+
+Every payload follows this envelope:
+
+```json
+{
+  "event": "payment.paid",
+  "timestamp": 1773529966,
+  "data": { ... }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `event` | `string` | The event type. |
+| `timestamp` | `number` | Unix timestamp (seconds) of when the event was emitted. |
+| `data` | `object` | Event-specific payload. See [Event Payloads](#event-payloads). |
+
+---
+
+## Step 3 — Verify the Signature
+
+<Callout title="Always Verify" type="warn">
+**Never process a webhook without first verifying its signature.** Skipping this step exposes your system to spoofed requests.
+</Callout>
+
+### How We Sign
+
+Our server builds the payload object, serialises it to JSON, and signs it with your secret:
+
+```ts
+// Server-side (for reference only)
+const payload = {
+  event,
+  timestamp: Math.floor(Date.now() / 1000),
+  data,
+};
+
+const signature = crypto
+  .createHmac("sha256", secret)
+  .update(JSON.stringify(payload))
+  .digest("hex");
+```
+
+The resulting hex string is sent in the `X-Signature` header.
+
+### How You Verify
+
+Your handler must:
+
+1. Read the raw JSON body **before** parsing it.
+2. Recompute the HMAC-SHA256 of the body using your secret key.
+3. Compare the result to the `X-Signature` header using a constant-time comparison.
+4. Reject the request if the signatures do not match.
+
+<Callout type="error" title="Use Constant-Time Comparison">
+A regular `===` comparison is vulnerable to timing attacks. Always use your language's built-in constant-time comparison function (e.g. `crypto.timingSafeEqual` in Node.js).
+</Callout>
+
+### Signature Verification Examples
+
+<Tabs items={['Node.js', 'Python', 'PHP', 'Go']}>
+
+<Tab>
+
+```ts title="webhook.ts"
+import crypto from "crypto";
+import { IncomingMessage, ServerResponse } from "http";
+
+function verifySignature(rawBody: string, secret: string, signature: string): boolean {
+  const expected = crypto
+    .createHmac("sha256", secret)
+    .update(rawBody)
+    .digest("hex");
+
+  // Constant-time comparison to prevent timing attacks
+  return crypto.timingSafeEqual(
+    Buffer.from(expected, "hex"),
+    Buffer.from(signature, "hex")
+  );
+}
+
+// Express example
+app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
+  const rawBody = req.body.toString("utf8");
+  const signature = req.headers["x-signature"] as string;
+  const secret = process.env.WEBHOOK_SECRET!;
+
+  if (!verifySignature(rawBody, secret, signature)) {
+    return res.status(401).json({ error: "Invalid signature" });
+  }
+
+  const payload = JSON.parse(rawBody);
+  console.log("Received event:", payload.event);
+
+  // Handle event...
+  res.status(200).json({ received: true });
+});
+```
+
+</Tab>
+
+<Tab>
+
+```python title="webhook.py"
+import hmac
+import hashlib
+import json
+from flask import Flask, request, jsonify
+import os
+
+app = Flask(__name__)
+
+def verify_signature(raw_body: str, secret: str, signature: str) -> bool:
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        raw_body.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+    # Constant-time comparison
+    return hmac.compare_digest(expected, signature)
+
+@app.route("/webhook", methods=["POST"])
+def webhook():
+    raw_body = request.get_data(as_text=True)
+    signature = request.headers.get("X-Signature", "")
+    secret = os.environ["WEBHOOK_SECRET"]
+
+    if not verify_signature(raw_body, secret, signature):
+        return jsonify({"error": "Invalid signature"}), 401
+
+    payload = json.loads(raw_body)
+    print(f"Received event: {payload['event']}")
+
+    # Handle event...
+    return jsonify({"received": True}), 200
+```
+
+</Tab>
+
+<Tab>
+
+```php title="webhook.php"
+<?php
+
+function verifySignature(string $rawBody, string $secret, string $signature): bool {
+    $expected = hash_hmac('sha256', $rawBody, $secret);
+    // Constant-time comparison
+    return hash_equals($expected, $signature);
+}
+
+$rawBody  = file_get_contents('php://input');
+$signature = $_SERVER['HTTP_X_SIGNATURE'] ?? '';
+$secret   = getenv('WEBHOOK_SECRET');
+
+if (!verifySignature($rawBody, $secret, $signature)) {
+    http_response_code(401);
+    echo json_encode(['error' => 'Invalid signature']);
+    exit;
+}
+
+$payload = json_decode($rawBody, true);
+error_log('Received event: ' . $payload['event']);
+
+// Handle event...
+http_response_code(200);
+echo json_encode(['received' => true]);
+```
+
+</Tab>
+
+<Tab>
+
+```go title="webhook.go"
+package main
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"io"
+	"log"
+	"net/http"
+	"os"
+)
+
+func verifySignature(rawBody []byte, secret, signature string) bool {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(rawBody)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	// Constant-time comparison
+	return hmac.Equal([]byte(expected), []byte(signature))
+}
+
+func webhookHandler(w http.ResponseWriter, r *http.Request) {
+	rawBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Cannot read body", http.StatusBadRequest)
+		return
+	}
+
+	signature := r.Header.Get("X-Signature")
+	secret := os.Getenv("WEBHOOK_SECRET")
+
+	if !verifySignature(rawBody, secret, signature) {
+		http.Error(w, `{"error":"Invalid signature"}`, http.StatusUnauthorized)
+		return
+	}
+
+	var payload map[string]interface{}
+	json.Unmarshal(rawBody, &payload)
+	log.Printf("Received event: %v", payload["event"])
+
+	// Handle event...
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"received":true}`))
+}
+
+func main() {
+	http.HandleFunc("/webhook", webhookHandler)
+	http.ListenAndServe(":8080", nil)
+}
+```
+
+</Tab>
+
+</Tabs>
+
+---
+
+## Step 4 — Respond Correctly
+
+Your endpoint **must** return a `2xx` HTTP status code within **5 seconds** to acknowledge receipt. Our system considers any other response (or a timeout) a delivery failure.
+
+<Callout title="Respond First, Process Later">
+Do not perform heavy processing synchronously inside the webhook handler. Acknowledge the request immediately with `200 OK`, then process the event asynchronously (e.g. via a job queue).
+</Callout>
+
+```ts
+// ✅ Correct pattern
+app.post("/webhook", (req, res) => {
+  // 1. Verify signature
+  // 2. Acknowledge immediately
+  res.status(200).json({ received: true });
+
+  // 3. Process asynchronously
+  processEvent(req.body).catch(console.error);
+});
+```
+
+---
+
+## Retry Policy & Dead Letter Queue
+
+If our server does not receive a `2xx` response (network error, timeout, `4xx`, `5xx`), the delivery is retried automatically.
+
+### Retry Timeline
+
+```
+Attempt 1  ──────────────────────────────►  T+0s   (initial delivery)
+                  ↓ failure
+Attempt 2  ──────────────────────────────►  T+30s (±6s)
+                  ↓ failure
+Attempt 3  ──────────────────────────────►  T+1min30s (±18s)
+                  ↓ failure
+Attempt 4  ──────────────────────────────►  T+3min30s (±42s)
+                  ↓ failure
+Attempt 5  ──────────────────────────────►  T+7min30s (±1min30s)
+                  ↓ failure
+Dead Letter Queue (DLQ) — webhook DISABLED
+```
+
+| Attempt | Delay after previous failure |
+|---|---|
+| 1 | Immediate |
+| 2 | ~30 seconds |
+| 3 | ~2 minutes |
+| 4 | ~4 minutes |
+| 5 | ~8 minutes |
+| DLQ | — webhook disabled |
+
+<Callout type="error" title="Dead Letter Queue">
+After **5 consecutive failures**, your webhook endpoint is added to the **Dead Letter Queue** and automatically disabled. It will **no longer receive any notifications** until you re-enable it from the Dashboard.
+
+To re-enable: Dashboard → Webhooks → find the disabled endpoint → click **Re-enable**.
+</Callout>
+
+---
+
+## Event Payloads
+
+### `payment.paid` / `payment.notenough` / `payment.overpaid` / `payment.processing` / `payment.state.expired` / `payment.state.canceled`
+
+```json
+{
+  "event": "payment.paid",
+  "timestamp": 1773529966,
+  "data": {
+    "payment_id": "546536",
+    "status": "PAID",
+    "state": "NONE",
+    "callback_data": ? {},
+    "refund": ? {
+            "refund_id": "94857584",
+            "amount": 45.67,
+            "type": "OVERPAID",
+            "status": "PENDING",
+            "eligibility": {
+              "is_eligible": true,
+              "minimum_amount_required": 2,
+              "symbol": "USDT",
+            },
+          },
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `payment_id` | `string` | Unique payment request identifier. |
+| `status` | `string` | `PENDING` \| `PAID` \| `OVERPAID` \| `NOTENOUGH` \| `PROCESSING` |
+| `state` | `string` | `NONE` \| `EXPIRED` \| `CANCELED` |
+| `callback_data` | `object \| null` | Arbitrary data you attached when creating the request. |
+| `refund` | `object \| null` | Refund data if applicable. When present, contains the following fields: |
+|          |                   | - `refund_id` (`string`): Unique refund identifier |
+|          |                   | - `amount` (`number`): Refund amount in the specified currency |
+|          |                   | - `type` (`string`): Type of refund - `OVERPAID` \| `NOTENOUGH` |
+|          |                   | - `status` (`string`): Current refund status - `PENDING` |
+|          |                   | - `eligibility` (`object`): Refund eligibility details |
+|          |                   |   - `is_eligible` (`boolean`): Whether refund is eligible |
+|          |                   |   - `minimum_amount_required` (`number`): Minimum amount required for refund |
+|          |                   |   - `symbol` (`string`): Currency symbol (e.g., "USDT") |
+
+
+### `invoice.paid` / `invoice.state.expired` / `invoice.state.canceled`
+
+```json
+{
+  "event": "payment.paid",
+  "timestamp": 1773529966,
+  "data": {
+    "invoice_id": "546536",
+    "status": "PAID",
+    "state": "NONE",
+    "callback_data": ? {},
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `invoice_id` | `string` | Unique invoice identifier. |
+| `status` | `string` | `PAID` |
+| `state` | `string` | `NONE` \| `EXPIRED` \| `CANCELED` |
+| `callback_data` | `object \| null` | Arbitrary data you attached when creating the request. |
+
+
+### `payout.completed` / `payout.failed` / `payout.processing`
+
+```json
+{
+  "event": "payout.completed",
+  "timestamp": 1773529966,
+  "data": {
+    "payout_id": "pyt_ghi789",
+    "tx_hash": "0xdef...",
+    "amount": "50.00",
+    "address": "TXyz...",
+    "currency": "USDT",
+    "network": "TRC20",
+    "status": "completed",
+    "callback_data": ? {}
+  }
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `payout_id` | `string` | Unique public payout identifier. |
+| `tx_hash` | `string \| null` | On-chain transaction hash (null if not yet submitted). |
+| `amount` | `string` | Payout amount as a decimal string. |
+| `address` | `string` | Destination wallet address. |
+| `currency` | `string` | Asset ticker (e.g. `USDT`, `BTC`). |
+| `network` | `string` | Blockchain network (e.g. `ethereum`). |
+| `status` | `string` | `processing` \| `completed` \| `failed`. |
+| `callback_data` | `object \| null` | Arbitrary data you attached when creating the payout. |
+
+### `webhook.test`
+
+Sent when you click **Test** in the Dashboard.
+
+```json
+{
+  "event": "webhook.test",
+  "timestamp": 1773529966,
+  "data": {
+    "message": "This is a test webhook",
+    "environment": "sandbox"
+  }
+}
+```
+
+---
+
+## Security Best Practices
+
+<Callout type="idea" title="Security Checklist">
+Run through this checklist when deploying your webhook handler.
+</Callout>
+
+### ✅ Always Verify the Signature
+
+Never skip signature verification, even in development. A missing or invalid `X-Signature` must result in a `401 Unauthorized` response — not silent acceptance.
+
+### ✅ Use HTTPS Only
+
+Your listener URL must be a valid `https://` endpoint. Plaintext `http://` URLs are rejected. HTTPS ensures the payload cannot be read or tampered with in transit.
+
+### ✅ Store Your Secret in Environment Variables
+
+```bash
+# .env
+WEBHOOK_SECRET=your_strong_random_secret
+
+# Never do this ❌
+const secret = "hardcoded_secret_in_code";
+```
+
+### ✅ Protect Against Replay Attacks
+
+The `timestamp` field in every payload is a Unix timestamp. Reject requests where the timestamp is more than 5 minutes old:
+
+```ts
+const TOLERANCE_SECONDS = 5 * 60; // 5 minutes
+
+const payload = JSON.parse(rawBody);
+const age = Math.floor(Date.now() / 1000) - payload.timestamp;
+
+if (age > TOLERANCE_SECONDS) {
+  return res.status(400).json({ error: "Stale request" });
+}
+```
+
+### ✅ Return 200 Quickly
+
+Respond within 5 seconds. Offload all processing to a background queue to avoid timeouts that trigger unnecessary retries.
+
+### ✅ Make Your Handler Idempotent
+
+Retries mean you may receive the same event more than once. Use the combination of `event` + a unique ID from `data` (e.g. `payout_id`, `payment_id`) as a deduplication key:
+
+```ts
+const dedupKey = `${payload.event}:${payload.data.payout_id}`;
+if (await redis.exists(dedupKey)) {
+  return res.status(200).json({ received: true }); // already processed
+}
+await redis.set(dedupKey, 1, "EX", 86400);
+// ... process event
+```
+
+### ✅ Monitor Your Endpoint
+
+Watch your server logs and set up alerts for `401` and `5xx` responses on your webhook route. A disabled webhook (DLQ) means missed events.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely Cause | Solution |
+|---|---|---|
+| `401 Unauthorized` from your server | Signature mismatch | Check that you're using the raw body string, not a re-serialised object. |
+| Webhook appears disabled | 5 consecutive failures → DLQ | Fix your endpoint, then re-enable from Dashboard. |
+| Test succeeds but live events don't arrive | Event not subscribed | Check your subscribed events list in Dashboard. |
+| Duplicate events received | Normal retry behaviour | Implement idempotency using event + resource ID. |
+| Timeout on your side | Slow synchronous processing | Acknowledge with `200` immediately, process async. |
+
+<Callout title="Need Help?">
+If your webhook is stuck in the DLQ or you need to rotate your secret key, visit **Dashboard → Webhooks** or contact our support team.
+</Callout>

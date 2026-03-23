@@ -1,0 +1,44 @@
+---
+title: Accept Crypto Payments
+description: Get started
+icon: Bitcoin
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { CreditCard, LayoutTemplate, ArrowUpRight } from 'lucide-react';
+
+Everything you need to accept and send crypto payments, from fully customizable payment flows to ready-to-use hosted interfaces.
+
+CicaPay builds tools that help businesses collect and send crypto payments easily and securely. We handle the complexity of multiple blockchains, multi-currency support, and evolving crypto technologies so you can focus on building your product.
+
+Explore the available options and choose the integration that fits your use case :
+
+<Cards>
+  <Card
+    icon={<CreditCard />}
+    title="Payment Request"
+    href="/docs/payment-request"
+  >
+    Handle the entire payment flow directly in your application without redirection.
+
+    You keep full control of the user interface and checkout experience, while the CicaPay API manages blockchain interactions and payment processing in the background.
+  </Card>
+  <Card
+    icon={<LayoutTemplate />}
+    title="Invoice"
+    href="/docs/invoice"
+  >
+    Use CicaPay’s hosted payment page to start accepting crypto payments quickly.
+
+    The hosted interface provides a professional checkout experience with wallet connection, payment instructions, and real-time payment status, without requiring any frontend development.
+  </Card>
+  <Card
+    icon={<ArrowUpRight />}
+    title="Payout"
+    href="/docs/payout"
+  >
+    Send crypto from your wallet to any external blockchain address.
+
+    Payouts are ideal for **withdrawals**, **disbursements**, and **automated transfers**, allowing you to programmatically move funds when needed.
+  </Card>
+</Cards>

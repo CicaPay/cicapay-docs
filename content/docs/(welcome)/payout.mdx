@@ -1,0 +1,132 @@
+---
+title: Payout
+description: Send crypto from your CicaPay wallet to any external blockchain address using the Payout API.
+icon: Send
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Card, Cards } from 'fumadocs-ui/components/card';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+## Overview
+
+The **Payout** API lets you programmatically send crypto from your CicaPay wallet to any external blockchain address. Use it to automate withdrawals, disbursements, or any scenario where you need to push funds to an on-chain address.
+
+<Callout type="warn" title="IP Whitelisting Required Before First Use">
+The Payout service requires your server IP address to be whitelisted by our team, along with a security review. **You cannot initiate payouts until this process is complete.** [Contact us →](/docs/support) to get started.
+</Callout>
+
+---
+
+## Step 1 — Get Whitelisted
+
+Before making any payout request, reach out to our team to:
+
+- Register and whitelist your server IP address(es)
+- Complete the required security checks
+
+Once approved, your account will be enabled for payout API access.
+
+[**Contact our team to request access →**](/docs/support)
+
+---
+
+## Step 2 — Initiate a Payout
+
+Send a `POST` request to the following endpoint:
+
+[**`POST /pay_out/new` — API Reference →**](/docs/api-reference/Payouts/createPayout)
+
+### Request Body
+
+```json
+{
+  "amount": 50,
+  "currency": "USDT",
+  "network": "bnb_smart_chain",
+  "address": "TQ9nF5mR7Pz1j3vV3p1Qn3v2T8g6cF9YhR",
+  "callback_data": {
+    "payout_reference": "PO-18291"
+  }
+}
+```
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `amount` | `number` | ✅ | The exact amount the recipient will receive. **Payout fees are deducted separately — see note below.** |
+| `currency` | `string` | ✅ | The crypto asset to send. [Supported currencies →](/docs/supported-currencies) |
+| `network` | `string` | ✅ | The blockchain network to use. Must be valid for the chosen `currency`. [Supported networks →](/docs/supported-currencies) |
+| `address` | `string` | ✅ | The recipient's external wallet address. **See critical warning below.** |
+| `callback_data` | `object` | ❌ | Arbitrary data returned as-is in webhook notifications. We do not validate or guarantee its integrity. |
+
+<Callout type="error" title="Wrong Address = Permanent Loss of Funds">
+The `address` field must be accurate and on the correct `network`. **Any error in the address or network means funds are lost forever — there is no way to reverse an on-chain transaction.** Double-check both fields programmatically before submitting. Read the [Disclaimer & Responsibility page](/docs/disclaimer).
+</Callout>
+
+<Callout title="Fee Deduction — Ensure Sufficient Balance">
+The `amount` is what the recipient receives. Payout fees are charged on top and deducted from your wallet balance. To successfully send `50 USDT`, you must have `50 + fee` available. See the [Fee Schedule →](/docs/fees) for current rates.
+</Callout>
+
+---
+
+## Step 3 — Handle the Response
+
+A successful request returns a payout confirmation immediately:
+
+```json
+{
+  "payout_id": "po_82f19aa2",
+  "address": "TQ9nF5mR7Pz1j3vV3p1Qn3v2T8g6cF9YhR",
+  "currency": "USDT",
+  "network": "bnb_smart_chain",
+  "amount": 50,
+  "fee": 0.5,
+  "net_amount": 50.5
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|---|---|---|
+| `payout_id` | `string` | Unique identifier for this payout. Store it to track status later. |
+| `address` | `string` | The recipient address the funds will be sent to. |
+| `currency` | `string` | The crypto asset being sent. |
+| `network` | `string` | The blockchain network used. |
+| `amount` | `string` | The amount the recipient will receive. |
+| `fee` | `string` | The payout fee applied to this transaction. [Fee schedule →](/docs/fees) |
+| `net_amount` | `string` | Total deducted from your wallet (`amount + fee`). |
+
+<Callout title="Payout is Queued, Not Instant">
+A successful API response means your payout has been accepted and queued for processing — not that funds have already been sent on-chain. Track the actual delivery status via webhooks or the status endpoint.
+</Callout>
+
+---
+
+## Step 4 — Track the Payout
+
+### Webhooks (Recommended)
+
+We send a webhook notification every time the payout status changes. Subscribe to the relevant events to be notified in real time.
+
+<Cards>
+  <Card title="Configure Webhooks" href="/docs/webhooks">
+    Set up your endpoint and subscribe to payout events.
+  </Card>
+</Cards>
+
+Relevant events for payouts:
+
+| Event | Description |
+|---|---|
+| `payout.processing` | The payout has been queued and is being processed. |
+| `payout.completed` | The payout was successfully delivered on-chain. |
+| `payout.failed` | The payout could not be completed. |
+
+### Poll the API
+
+You can also query the current status of any payout at any time:
+
+[**`GET /pay_out/{payout_id}` — API Reference →**](/docs/api-reference/Payouts/getPayout)

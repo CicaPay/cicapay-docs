@@ -1,0 +1,65 @@
+---
+title: Testnet Faucet
+description: Get free testnet BTT tokens sent directly to your address to test payment requests and invoices on BSC Testnet.
+icon: Droplet
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+## Overview
+
+Building an automated payment system is hard enough — having to learn blockchain, manage wallets just to *test* it makes it even harder... We built our own faucet so you can skip all of that.
+
+Get free testnet tokens sent directly to your address in seconds, no crypto knowledge required.
+
+<Callout title="Test Environment Only">
+Faucet tokens are on **BSC Testnet** and carry no real-world value. They can only be used to test [Payment Requests](/docs/payment-request) and [Invoices](/docs/invoice) in the sandbox environment.
+</Callout>
+
+### Faucet Details
+
+| Property | Value |
+|---|---|
+| **Token** | BTT (BPay Test Token) |
+| **Network** | BNB Smart Chain Testnet (`bsc_test_net`) |
+| **Contract Address** | `0x7F3812766Af4012a8ED9d857bD2451b846B6C60e` |
+| **Max per request** | `1 BTT` |
+| **Min per request** | `> 0 BTT` |
+| **Rate limit** | 10 requests per hour |
+
+---
+
+## Request Testnet Tokens
+
+<FaucetWidget />
+
+---
+
+## FAQ
+
+<Accordions>
+
+<Accordion title="What is a faucet?">
+A faucet is a tool that distributes small amounts of testnet tokens for free. Testnet tokens have no real monetary value — they exist solely for developers to test integrations on a blockchain test environment without spending real money.
+</Accordion>
+
+<Accordion title="How does the faucet work?">
+Enter your CicaPay public API key (any active key from your dashboard), the destination wallet address, and the amount you want to receive. Our system validates your key, checks the rate limit, and dispatches the tokens on BSC Testnet. The transaction is confirmed on-chain within a few seconds to a couple of minutes depending on network conditions.
+</Accordion>
+
+<Accordion title="How many tokens can I request?">
+Each request can be between `> 0` and `1 BTT`. You can make up to **10 requests per hour**. Once the rate limit is reached, you will need to wait before making another request.
+</Accordion>
+
+<Accordion title="How long does it take for the testnet tokens to arrive?">
+Tokens are typically delivered within **a few seconds to 2 minutes** after a successful request. BSC Testnet block times are fast, but occasional network congestion may cause slight delays. You can check the transaction status using the `tx_hash` shown in the history panel.
+</Accordion>
+
+<Accordion title="Got more questions or feedback?">
+We'd love to hear from you. Join our community to ask questions, share feedback, and connect with other developers building on CicaPay.
+
+**[Join our community →](/community)**
+</Accordion>
+
+</Accordions>

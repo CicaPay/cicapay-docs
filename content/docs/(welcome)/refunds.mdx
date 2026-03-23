@@ -1,0 +1,125 @@
+---
+title: Refunds
+description: How refunds work for underpayments and overpayments on payment requests and invoices.
+icon: SendToBack
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+## Overview
+
+Our refund service handles two scenarios automatically: payments where the customer sent **less than required** and payments where the customer sent **more than required**. In both cases, the eligible amount is returned to the sender on the same crypto asset and the same network used for the original payment.
+
+<Callout type="warn" title="No Swaps — Same Asset and Network Only">
+We never swap assets. Refunds are always sent in the same cryptocurrency and on the same blockchain network as the original payment. A USDT payment on bnb_smart_chain will be refunded in USDT on bnb_smart_chain.
+</Callout>
+
+---
+
+## Refund Scenarios
+
+### Underpayment — Not Enough Received
+
+The customer sent less than the required amount.
+
+**Example:** Required `500 USDT`, customer sent `450 USDT`.
+
+In this case, the payment is not considered valid. The customer is eligible to receive back the full amount they sent, minus blockchain gas fees.
+
+> **Refund amount = amount sent − blockchain gas fee**
+
+---
+
+### Overpayment — Too Much Received
+
+The customer sent more than the required amount. The payment is marked as paid, and the excess is eligible for refund.
+
+**Example:** Required `500 USDT`, customer sent `550 USDT`.
+
+> **Refund amount = amount sent − required amount − blockchain gas fee**
+> In this example: `550 − 500 − gas fee = ~50 USDT`
+
+---
+
+## How to Request a Refund
+
+The refund process differs depending on whether the payment was made via Invoice or Payment Request.
+
+<Tabs items={['Invoice', 'Payment Request']}>
+
+<Tab>
+
+If the crypto amount sent is confirmed by our service and eligible for refund (see [eligibility](#refund-eligibility-by-network) below), a **refund form appears automatically** on the invoice page after the payment window times out.
+
+Your customer fills in the refund form directly — no action is needed on your side.
+
+</Tab>
+
+<Tab>
+
+For payment requests, your webhook will receive a notification containing the refund-related information. You can then submit a refund request programmatically on behalf of your customer using:
+
+[**`POST /refund` — API Reference →**](/docs/api-reference/refund/create)
+
+</Tab>
+
+</Tabs>
+
+<Callout title="Processing Time">
+Refunds typically take up to **24 hours** to be processed. We send a notification once the refund has been dispatched.
+</Callout>
+
+---
+
+## Refund Eligibility by Network
+
+Not all amounts qualify for a refund. The sent amount must meet the minimum threshold for the blockchain network used, after gas fee deduction.
+
+| Network | Minimum Eligible Amount |
+|---|---|
+| BNB Smart Chain | **$3.00** |
+| Ethereum | **$10.00** |
+
+Amounts below the minimum for the respective network are not eligible and will not be refunded.
+
+---
+
+## Important Warnings
+
+<Callout type="error" title="Wrong Refund Address = Permanent Loss of Funds">
+If you or your customer provides an incorrect wallet address when submitting a refund request — whether via the invoice refund form or the API endpoint — **the funds will be lost forever**. There is no way to reverse an on-chain transaction. Always double-check the address and network before submitting.
+</Callout>
+
+<Callout type="error" title="Payouts Are Not Refundable">
+Payout transactions cannot be refunded under any circumstances. Once a payout is dispatched on-chain, it is final. Always verify the recipient address and network carefully before initiating a payout. See the [Payout page](/docs/payout) and the [Disclaimer](/docs/disclaimer).
+</Callout>
+
+---
+
+## FAQ
+
+<Accordions>
+
+<Accordion title="What do I need to request a refund?">
+Just two things: the **Payment Request ID** or **Invoice ID** associated with the transaction, and the **blockchain wallet address** where the refund should be sent. Make sure the address is correct and on the same network as the original payment before submitting.
+</Accordion>
+
+<Accordion title="How long does a refund take?">
+Refunds are usually processed within **24 hours**. Once processed, you will receive a notification. On-chain confirmation time depends on the network — BNB Smart Chain is typically faster than Ethereum.
+</Accordion>
+
+<Accordion title="Will I receive the full amount back?">
+Not exactly. Blockchain gas fees are always deducted from the refunded amount. For underpayments, you receive back what you sent minus gas. For overpayments, you receive back the excess minus gas.
+</Accordion>
+
+<Accordion title="Can I get a refund in a different currency or network?">
+No. We never swap assets. Refunds are always issued in the same cryptocurrency and on the same network used for the original payment.
+</Accordion>
+
+<Accordion title="What if my amount is below the minimum threshold?">
+If the eligible refund amount falls below the minimum for the network (e.g. under $3 on BSC or under $10 on Ethereum), the amount is not eligible and no refund will be issued.
+</Accordion>
+
+</Accordions>

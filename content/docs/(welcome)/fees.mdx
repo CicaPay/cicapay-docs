@@ -1,0 +1,86 @@
+---
+title: Fees
+description: Transparent, volume-based fee structure for pay-in, payout, withdrawal, and swap — built for every stage of your business.
+icon: LayersPlus
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+We designed our fee structure to be simple, transparent, and competitive at every stage — whether you're just starting out or processing high volumes.
+
+All fees below apply to the **Standard** plan.
+
+---
+
+## Pay-in Fees
+### Payment Request & Invoice
+
+Pay-in covers both [Payment Requests](/docs/payment-request) and [Invoices](/docs/invoice).
+Two parties are charged separately: your customer and you as the merchant.
+
+### Customer Fee
+
+The fee paid by your customer is calculated based on the payment amount and decreases as the amount grows. A minimum fee of **$1.00** applies regardless of the rate.
+
+| Amount Range | Fee Rate | Minimum Fee |
+|---|---|---|
+| $0 — $100 | **2.5%** | $1.00 |
+| $100 — $1,000 | **1.5%** | $1.00 |
+| $1,000 — $10,000 | **1.0%** | $1.00 |
+| > $10,000 | **0.7%** | $1.00 |
+
+**Example:** A $60 payment → 2.5% = $1.50 fee. A $40 payment → 2.5% = $1.00 (minimum applies).
+
+### Merchant Fee
+
+You are charged a mixed fee combining a percentage and a fixed amount on each pay-in you receive.
+
+| Component | Value |
+|---|---|
+| Percentage | **2.5%** |
+| Fixed amount | **$0.00** |
+
+---
+
+## Payout Fees
+
+For payouts, only the merchant is charged. Your customer receives the full requested amount.
+
+| Component | Value |
+|---|---|
+| Percentage | **2%** |
+| Fixed amount | — |
+
+<Callout title="Sufficient Balance Required">
+The payout fee is deducted on top of the sent amount. To successfully send `$100`, you must have `$100 + fee` available in your wallet. See the [Payout page](/docs/payout) for details.
+</Callout>
+
+---
+
+## Withdrawal Fee
+
+| Fee Rate |
+|---|
+| **2%** |
+
+Withdrawal fees apply when moving funds from your CicaPay wallet to an external address.
+
+---
+
+## Swap Fee
+
+| Fee Rate |
+|---|
+| **5%** |
+
+Swap fees apply when converting between assets within your CicaPay wallet.
+
+---
+
+## Custom Pricing
+
+<Callout type="idea" title="High Volume? Let's Talk.">
+If your transaction volume justifies a custom fee structure, we're open to discussing tailored pricing that fits your business.
+
+**[Talk to our team →](/docs/support)**
+</Callout>

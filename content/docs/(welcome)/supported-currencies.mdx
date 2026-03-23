@@ -1,0 +1,148 @@
+---
+title: Supported Currencies & Networks
+description: All supported cryptocurrencies, blockchain networks, and fiat currencies available on our platform.
+icon: Workflow
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+<Callout type="warn" title="This page changes over time">
+We may add or remove currencies and networks at any time. Always refer to this page as your source of truth before integrating. Need a currency or network that isn't listed? [Contact our team](#custom-currency).
+</Callout>
+
+---
+
+## Crypto Currencies
+
+<Tabs items={['Live Environment', 'Test Environment']}>
+
+<Tab>
+
+The following assets are available in **production**. Both **Pay-in** (payment requests & invoices) and **Pay-out** are supported for all entries unless noted otherwise.
+
+### USDT — Tether
+
+| Field | Value |
+|---|---|
+| **Symbol** | USDT |
+| **Name** | Tether |
+
+| Network | Network Symbol |
+|---|---|
+| Ethereum | `ethereum` |
+| BNB Smart Chain | `bsc` |
+| Arbitrum | `arbitrum` |
+
+Supported for: **Pay-in** (payment request, invoice) · **Pay-out**
+
+---
+
+### USDC — USD Coin
+
+| Field | Value |
+|---|---|
+| **Symbol** | USDC |
+| **Name** | USD Coin |
+
+| Network | Network Symbol |
+|---|---|
+| Ethereum | `ethereum` |
+| BNB Smart Chain | `bsc` |
+| Arbitrum | `arbitrum` |
+
+Supported for: **Pay-in** (payment request, invoice) · **Pay-out**
+
+---
+
+### ETH — Ether
+
+| Field | Value |
+|---|---|
+| **Symbol** | ETH |
+| **Name** | Ether |
+
+| Network | Network Symbol |
+|---|---|
+| Ethereum | `ethereum` |
+
+Supported for: **Pay-in** (payment request, invoice) · **Pay-out**
+
+---
+
+### BNB — BNB
+
+| Field | Value |
+|---|---|
+| **Symbol** | BNB |
+| **Name** | BNB |
+
+| Network | Network Symbol |
+|---|---|
+| BNB Smart Chain | `bsc` |
+
+Supported for: **Pay-in** (payment request, invoice) · **Pay-out**
+
+</Tab>
+
+<Tab>
+
+The following assets are available in the **sandbox / test environment** for integration testing only. They carry no real-world value.
+
+### BTT — BitTorrent (Pay-in only)
+
+| Field | Value |
+|---|---|
+| **Symbol** | BTT |
+| **Name** | BitTorrent |
+
+| Network | Network Symbol |
+|---|---|
+| BSC Testnet | `bsc_testnet` |
+
+Supported for: **Pay-in** (payment request, invoice)
+
+---
+
+### PYUSD — PayPal USD (Pay-out only)
+
+| Field | Value |
+|---|---|
+| **Symbol** | PYUSD |
+| **Name** | PayPal USD |
+
+| Network | Network Symbol |
+|---|---|
+| Ethereum Sepolia | `eth_sepolia` |
+
+Supported for: **Pay-out**
+
+<Callout title="Test Environment">
+Test wallets and transactions are isolated from production. Never send real funds to test addresses.
+</Callout>
+
+</Tab>
+
+</Tabs>
+
+---
+
+## Fiat Currencies
+
+Fiat currencies are used for pricing, invoicing, and conversion reference. The following are currently supported:
+
+| Symbol | Name |
+|---|---|
+| `USD` | United States Dollar |
+| `EUR` | Euro |
+| `XOF` | West African CFA Franc |
+
+---
+
+## Custom Currency
+
+<Callout type="idea" title="Need a specific currency or network?">
+Our list is always evolving. If you need an asset or network that isn't listed here, reach out — we're happy to evaluate additions based on demand and liquidity.
+
+**[Contact our team →](mailto:support@yourplatform.com)**
+</Callout>
