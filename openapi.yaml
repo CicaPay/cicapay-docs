@@ -470,6 +470,119 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /refund/new:
+    post:
+      tags:
+        - Refunds
+      summary: Submit a refund
+      description: Submit a refund request by providing a destination wallet address.
+      operationId: submitRefund
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRefundRequest'
+      responses:
+        '200':
+          description: Refund successfully submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitRefundResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidAddress:
+                  summary: Invalid wallet address
+                  value:
+                    error:
+                      type: invalid_request_error
+                      code: invalid_request
+                      decline_code: invalid_address
+                      message: Invalid wallet address for this network
+                      param: TRON
+                      documentation_url: https://xxx.com/docs/errors/
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Refund cannot be resubmitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Refund not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /refund/{id}:
+    get:
+      tags:
+        - Refunds
+      summary: Retrieve a refund
+      description: Get detailed information about a specific refund.
+      operationId: getRefund
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identifier of the refund
+          schema:
+            type: string
+            example: c007339b-eeda-464f-bf45-e10b1762a38b
+      responses:
+        '200':
+          description: Refund retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetRefundResponse'
+        '401':
+          description: Unauthorized (invalid or missing access token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Refund not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     ApikeyAuthSchemaInput:
@@ -1120,6 +1233,38 @@ components:
           type: string
           description: Identifier of the canceled payment request
           example: '123456789'
+    SubmitRefundRequest:
+      type: object
+      required:
+        - refund_id
+        - address
+      properties:
+        refund_id:
+          type: string
+          description: Identifier of the refund to submit
+          example: c007339b-eeda-464f-bf45-e10b1762a38b
+        address:
+          type: string
+          description: Destination wallet address for the refund
+          example: TQ9nF5mR7Pz1j3vV3p1Qn3v2T8g6cF9YhR
+    SubmitRefundResponse:
+      type: object
+      required:
+        - success
+        - refund_id
+      properties:
+        success:
+          type: boolean
+          example: true
+        refund_id:
+          type: string
+          description: Identifier of the submitted refund
+          example: c007339b-eeda-464f-bf45-e10b1762a38b
+    GetRefundResponse:
+      type: object
+      properties:
+        refund:
+          $ref: '#/components/schemas/RefundObject'
   securitySchemes:
     BearerAuth:
       type: http
